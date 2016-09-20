@@ -57,6 +57,10 @@ prompt_pure_clear_screen() {
 	zle -I
 	# clear screen and move cursor to (0, 0)
 	print -n '\e[2J\e[0;0H'
+
+	# do not print the preprompt newline
+	prompt_pure_print_preprompt_newline=0
+
 	# print preprompt
 	prompt_pure_preprompt_render precmd
 }
@@ -152,7 +156,12 @@ prompt_pure_preprompt_render() {
 
 	# if executing through precmd, do not perform fancy terminal editing
 	if [[ "$1" == "precmd" ]]; then
-		print -P "\n${preprompt}"
+		if (( prompt_pure_print_preprompt_newline )); then
+			preprompt="\n${preprompt}"
+		else
+			prompt_pure_print_preprompt_newline=1
+		fi
+		print -P "${preprompt}"
 	else
 		# only redraw if the expanded preprompt has changed
 		[[ "${prompt_pure_last_preprompt[2]}" != "${(S%%)preprompt}" ]] || return
@@ -356,6 +365,9 @@ prompt_pure_setup() {
 	if [[ $widgets[clear-screen] == 'builtin' ]]; then
 		zle -N clear-screen prompt_pure_clear_screen
 	fi
+
+	# do not print the prepropmt newline initially
+	prompt_pure_print_preprompt_newline=0
 
 	# show username@host if logged in through SSH
 	[[ "$SSH_CONNECTION" != '' ]] && prompt_pure_username=' %F{242}%n@%m%f'
