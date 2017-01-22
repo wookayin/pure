@@ -23,6 +23,8 @@
 # \e[K  => clears everything after the cursor on the current line
 # \e[2K => clear everything on the current line
 
+# temporarily disable automatic git fetch in background
+PURE_GIT_PULL=0
 
 # turns seconds into human readable time
 # 165392 => 1d 21h 56m 32s
@@ -109,9 +111,9 @@ prompt_pure_preprompt_render() {
 	# check that no command is currently running, the preprompt will otherwise be rendered in the wrong place
 	[[ -n ${prompt_pure_cmd_timestamp+x} && "$1" != "precmd" ]] && return
 
-	# set color for git branch/dirty status, change color if dirty checking has been delayed
+	# set color for git branch/dirty status, change color if status checking has been delayed
 	local git_color="green"
-	[[ -n ${prompt_pure_git_last_dirty_check_timestamp+x} ]] && git_color="red"
+	[[ -n ${prompt_pure_git_last_status_check_timestamp+x} ]] && git_color="red"
 
 	# construct preprompt
 	# -------------------
@@ -129,10 +131,10 @@ prompt_pure_preprompt_render() {
 	# construct right-aligned prompts
 	# -------------------------------
 	pre_rprompt=''
-	# git info (repository status)
-	pre_rprompt+="%F{cyan}${prompt_pure_git_dirty}%f"
-	# git pull/push arrows
-	pre_rprompt+="%F{cyan}${prompt_pure_git_arrows}%f"
+	# git info (pull/push arrows)
+	pre_rprompt+="%F{blue}${prompt_pure_git_arrows}%f"
+	# git info (repository status, other than arrows)
+	pre_rprompt+="${prompt_pure_git_status}"
 
 	# merge left-prompt and right-prompt
 	prompt_pure_string_length_to_var "${preprompt}" "preprompt_length"
@@ -217,7 +219,7 @@ prompt_pure_precmd() {
 	# get vcs info
 	vcs_info
 
-	# preform async git dirty check and fetch
+	# preform async git status check and fetch
 	prompt_pure_async_tasks
 
 	# print the preprompt
@@ -227,21 +229,18 @@ prompt_pure_precmd() {
 	unset prompt_pure_cmd_timestamp
 }
 
-# fastest possible way to check if repo is dirty
-prompt_pure_async_git_dirty() {
+# fastest possible way to check git status (if repo is dirty, etc.)
+prompt_pure_async_git_status() {
 	setopt localoptions noshwordsplit
-	local untracked_dirty=$1 dir=$2
+	local untracked_status=$1 dir=$2
 
 	# use cd -q to avoid side effects of changing directory, e.g. chpwd hooks
 	builtin cd -q $dir
 
-	if [[ $untracked_dirty = 0 ]]; then
-		command git diff --no-ext-diff --quiet --exit-code
-	else
-		test -z "$(command git status --porcelain --ignore-submodules -unormal)"
-	fi
-
-	return $?
+	# fetch git status information via prezto's git-info module.
+	git-info on
+	git-info
+	echo ${git_info[rprompt]}
 }
 
 prompt_pure_async_git_fetch() {
@@ -285,8 +284,8 @@ prompt_pure_async_tasks() {
 		async_flush_jobs "prompt_pure"
 
 		# reset git preprompt variables, switching working tree
-		unset prompt_pure_git_dirty
-		unset prompt_pure_git_last_dirty_check_timestamp
+		unset prompt_pure_git_status
+		unset prompt_pure_git_last_status_check_timestamp
 		prompt_pure_git_arrows=
 
 		# set the new working tree and prefix with "x" to prevent the creation of a named path by AUTO_NAME_DIRS
@@ -298,18 +297,12 @@ prompt_pure_async_tasks() {
 
 	async_job "prompt_pure" prompt_pure_async_git_arrows $working_tree
 
+	async_job "prompt_pure" prompt_pure_async_git_status ${PURE_GIT_UNTRACKED_status:-1} $working_tree
+
 	# do not preform git fetch if it is disabled or working_tree == HOME
 	if (( ${PURE_GIT_PULL:-1} )) && [[ $working_tree != $HOME ]]; then
 		# tell worker to do a git fetch
 		async_job "prompt_pure" prompt_pure_async_git_fetch $working_tree
-	fi
-
-	# if dirty checking is sufficiently fast, tell worker to check it again, or wait for timeout
-	integer time_since_last_dirty_check=$(( EPOCHSECONDS - ${prompt_pure_git_last_dirty_check_timestamp:-0} ))
-	if (( time_since_last_dirty_check > ${PURE_GIT_DELAY_DIRTY_CHECK:-1800} )); then
-		unset prompt_pure_git_last_dirty_check_timestamp
-		# check check if there is anything to pull
-		async_job "prompt_pure" prompt_pure_async_git_dirty ${PURE_GIT_UNTRACKED_DIRTY:-1} $working_tree
 	fi
 }
 
@@ -329,20 +322,17 @@ prompt_pure_async_callback() {
 	local job=$1 code=$2 output=$3 exec_time=$4
 
 	case $job in
-		prompt_pure_async_git_dirty)
-			local prev_dirty=$prompt_pure_git_dirty
-			if (( code == 0 )); then
-				prompt_pure_git_dirty=
-			else
-				prompt_pure_git_dirty="*"
-			fi
+		prompt_pure_async_git_status)
+			local prev_status=$prompt_pure_git_status
+			prompt_pure_git_status="$output"
+			[ ! -z "$output" ] && prompt_pure_git_status+=" "
 
-			[[ $prev_dirty != $prompt_pure_git_dirty ]] && prompt_pure_preprompt_render
+			[[ $prev_status != $prompt_pure_git_status ]] && prompt_pure_preprompt_render
 
-			# When prompt_pure_git_last_dirty_check_timestamp is set, the git info is displayed in a different color.
+			# When prompt_pure_git_last_status_check_timestamp is set, the git info is displayed in a different color.
 			# To distinguish between a "fresh" and a "cached" result, the preprompt is rendered before setting this
 			# variable. Thus, only upon next rendering of the preprompt will the result appear in a different color.
-			(( $exec_time > 2 )) && prompt_pure_git_last_dirty_check_timestamp=$EPOCHSECONDS
+			(( $exec_time > 2 )) && prompt_pure_git_last_status_check_timestamp=$EPOCHSECONDS
 			;;
 		prompt_pure_async_git_fetch|prompt_pure_async_git_arrows)
 			# prompt_pure_async_git_fetch executes prompt_pure_async_git_arrows
@@ -386,7 +376,8 @@ prompt_pure_setup() {
 	add-zsh-hook precmd prompt_pure_precmd
 	add-zsh-hook preexec prompt_pure_preexec
 
-	# vcs_info: http://zsh.sourceforge.net/Doc/Release/User-Contributions.html#Version-Control-Information
+	# vcs_info: http://zsh.sourceforge.net/Doc/Release/User-Contributions.html
+	# TODO: replace vcs_info with $(zsh_prompt_info)
 	zstyle ':vcs_info:*' enable git
 	zstyle ':vcs_info:*' use-simple true
 	# only export two msg variables from vcs_info
@@ -395,6 +386,28 @@ prompt_pure_setup() {
 	# vcs_info_msg_1_ = 'x%R' git top level (%R), x-prefix prevents creation of a named path (AUTO_NAME_DIRS)
 	zstyle ':vcs_info:git*' formats ':%b' 'x%R'
 	zstyle ':vcs_info:git*' actionformats ':%b%F{yellow}:%a%f' 'x%R'
+
+	# for git status
+	# TODO: Remove dependency to prezto/git (but requires another one such as omz)
+	zstyle ':prezto:module:git:info' verbose 'yes'
+	zstyle ':prezto:module:git:info:action'    format ':%%B%F{yellow}%s%f%%b'
+	zstyle ':prezto:module:git:info:added'     format ' %%B%F{green}✚%f%%b'
+	#zstyle ':prezto:module:git:info:ahead'     format ' %%B%F{blue}↑%f%%b'
+	#zstyle ':prezto:module:git:info:behind'    format ' %%B%F{blue}↓%f%%b'
+	zstyle ':prezto:module:git:info:branch'    format ':%F{green}%b%f'
+	zstyle ':prezto:module:git:info:commit'    format '(%F{yellow}%.7c%f)'
+	zstyle ':prezto:module:git:info:deleted'   format ' %%B%F{red}✖%f%%b'
+	zstyle ':prezto:module:git:info:modified'  format ' %%B%F{yellow}✱%f%%b'
+	zstyle ':prezto:module:git:info:position'  format ':%F{red}%p%f'
+	zstyle ':prezto:module:git:info:renamed'   format ' %%B%F{magenta}→%f%%b'
+	zstyle ':prezto:module:git:info:stashed'   format ' %%B%F{cyan}✭%f%%b'
+	zstyle ':prezto:module:git:info:unmerged'  format ' %%B%F{yellow}═%f%%b'
+	zstyle ':prezto:module:git:info:untracked' format ' %%B%F{white}?%f%%b'
+
+	zstyle ':prezto:module:git:info:keys' format \
+		'prompt' ' $(coalesce "%b" "%c")%s' \
+		'rprompt' '%S%a%d%m%r%U%u'
+		#'rprompt' '%A%B%S%a%d%m%r%U%u'   # exclude ahead/behind
 
 	# if the user has not registered a custom zle widget for clear-screen,
 	# override the builtin one so that the preprompt is displayed correctly when
