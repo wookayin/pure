@@ -124,6 +124,9 @@ prompt_pure_preprompt_render() {
 	preprompt+="%B%F{red}%~%f%b"
 	# git info (branch, etc.)
 	preprompt+=" %F{$git_color}${vcs_info_msg_0_}%f"
+	# other information
+	preprompt+="${python_info[virtualenv]}"
+	preprompt+="%F{white}${cuda_info}%f"
 	# execution time
 	preprompt+="%F{yellow}${prompt_pure_cmd_exec_time}%f"
 
@@ -218,6 +221,18 @@ prompt_pure_precmd() {
 
 	# get vcs info
 	vcs_info
+
+	# get python info
+	if (( $+functions[python-info] )); then
+		python-info on; python-info
+	fi
+
+	# nvidia-cuda information
+	if [ ! -z "${CUDA_VISIBLE_DEVICES+1}" ]; then
+		cuda_info=" CUDA:$CUDA_VISIBLE_DEVICES"
+	else
+		unset cuda_info
+	fi
 
 	# preform async git status check and fetch
 	prompt_pure_async_tasks
@@ -408,6 +423,9 @@ prompt_pure_setup() {
 		'prompt' ' $(coalesce "%b" "%c")%s' \
 		'rprompt' '%S%a%d%m%r%U%u'
 		#'rprompt' '%A%B%S%a%d%m%r%U%u'   # exclude ahead/behind
+
+	# python virtualenv
+	zstyle ':prezto:module:python:info:virtualenv' format ' %F{cyan}%v%f'
 
 	# if the user has not registered a custom zle widget for clear-screen,
 	# override the builtin one so that the preprompt is displayed correctly when
