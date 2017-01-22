@@ -93,7 +93,7 @@ prompt_pure_preexec() {
 prompt_pure_string_length_to_var() {
 	local str=$1 var=$2 length
 	# perform expansion on str and check length
-	length=$(( ${#${(S%%)str//(\%([KF1]|)\{*\}|\%[Bbkf])}} ))
+	length=${#${(S%%)str//(\%([KF1]|)\{*\}|\%[Bbkf])}}
 
 	# store string length in variable as specified by caller
 	typeset -g "${var}"="${length}"
@@ -110,21 +110,37 @@ prompt_pure_preprompt_render() {
 	[[ -n ${prompt_pure_cmd_timestamp+x} && "$1" != "precmd" ]] && return
 
 	# set color for git branch/dirty status, change color if dirty checking has been delayed
-	local git_color=242
-	[[ -n ${prompt_pure_git_last_dirty_check_timestamp+x} ]] && git_color=red
+	local git_color="green"
+	[[ -n ${prompt_pure_git_last_dirty_check_timestamp+x} ]] && git_color="red"
 
 	# construct preprompt
+	# -------------------
 	local preprompt=""
 	# username and machine
 	preprompt+=$prompt_pure_username
 	# path
 	preprompt+="%B%F{red}%~%f%b"
-	# git info
-	preprompt+="%F{$git_color}${vcs_info_msg_0_}${prompt_pure_git_dirty}%f"
-	# git pull/push arrows
-	preprompt+="%F{cyan}${prompt_pure_git_arrows}%f"
+	# git info (branch, etc.)
+	preprompt+=" %F{$git_color}${vcs_info_msg_0_}%f"
 	# execution time
 	preprompt+="%F{yellow}${prompt_pure_cmd_exec_time}%f"
+
+
+	# construct right-aligned prompts
+	# -------------------------------
+	pre_rprompt=''
+	# git info (repository status)
+	pre_rprompt+="%F{cyan}${prompt_pure_git_dirty}%f"
+	# git pull/push arrows
+	pre_rprompt+="%F{cyan}${prompt_pure_git_arrows}%f"
+
+	# merge left-prompt and right-prompt
+	prompt_pure_string_length_to_var "${preprompt}" "preprompt_length"
+	prompt_pure_string_length_to_var "${pre_rprompt}" "pre_rprompt_length"
+	if (( ($preprompt_length - 1) % $COLUMNS + 1 + $pre_rprompt_length < $COLUMNS )); then
+		local rprompt_padding_width=$(($COLUMNS-(${preprompt_length}+${pre_rprompt_length})%$COLUMNS))
+		preprompt+="$(printf ' %.0s' {1..$rprompt_padding_width})${pre_rprompt}"
+	fi
 
 	# make sure prompt_pure_last_preprompt is a global array
 	typeset -g -a prompt_pure_last_preprompt
@@ -370,14 +386,15 @@ prompt_pure_setup() {
 	add-zsh-hook precmd prompt_pure_precmd
 	add-zsh-hook preexec prompt_pure_preexec
 
+	# vcs_info: http://zsh.sourceforge.net/Doc/Release/User-Contributions.html#Version-Control-Information
 	zstyle ':vcs_info:*' enable git
 	zstyle ':vcs_info:*' use-simple true
 	# only export two msg variables from vcs_info
 	zstyle ':vcs_info:*' max-exports 2
 	# vcs_info_msg_0_ = ' %b' (for branch)
 	# vcs_info_msg_1_ = 'x%R' git top level (%R), x-prefix prevents creation of a named path (AUTO_NAME_DIRS)
-	zstyle ':vcs_info:git*' formats ' %b' 'x%R'
-	zstyle ':vcs_info:git*' actionformats ' %b|%a' 'x%R'
+	zstyle ':vcs_info:git*' formats ':%b' 'x%R'
+	zstyle ':vcs_info:git*' actionformats ':%b%F{yellow}:%a%f' 'x%R'
 
 	# if the user has not registered a custom zle widget for clear-screen,
 	# override the builtin one so that the preprompt is displayed correctly when
