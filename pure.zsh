@@ -394,8 +394,15 @@ prompt_pure_setup() {
 	# show username@host if root, with username in white
 	[[ $UID -eq 0 ]] && prompt_pure_username=' %F{white}%n%f%F{242}@%m%f'
 
+	# prompt with vi-keybindings -- https://github.com/sindresorhus/pure/wiki
+	zstyle ':prezto:module:editor:info:keymap:primary'   format "❯%f"
+	zstyle ':prezto:module:editor:info:keymap:alternate' format "❮%f"
+
 	# prompt turns red if the previous command didn't exit with 0
-	PROMPT='%(?.%F{green}.%F{red})${PURE_PROMPT_SYMBOL:-❯}%f '
+	PROMPT='%(?.%F{green}.%F{red})${editor_info[keymap]}%f '
+
+	# sprompt
+	SPROMPT='zsh: correct %F{red}%R%f to %F{green}%r%f [nyae]? '
 }
 
 prompt_pure_setup "$0" "$@"
