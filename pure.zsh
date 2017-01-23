@@ -121,8 +121,14 @@ prompt_pure_preprompt_render() {
 	# construct preprompt
 	# -------------------
 	local preprompt=""
+
 	# username and machine
+	local prompt_pure_username='%F{yellow}%n%f'
+	[[ $UID -eq 0 ]] && prompt_pure_username='%F{white}%n%f' # root in white
+	prompt_pure_username+='%F{242}@'          # dark grey
+	prompt_pure_username+="%F{${PROMPT_HOST_COLOR:-cyan}}%m%f "
 	preprompt+=$prompt_pure_username
+
 	# path
 	preprompt+="%B%F{red}%~%f%b"
 	# git info (branch, etc.)
@@ -436,14 +442,6 @@ prompt_pure_setup() {
 	if [[ $widgets[clear-screen] == 'builtin' ]]; then
 		zle -N clear-screen prompt_pure_clear_screen
 	fi
-
-	# show username@host ALWAYS
-	prompt_pure_username='%F{yellow}%n'
-	prompt_pure_username+='%F{242}@'          # dark grey
-	prompt_pure_username+="%F{${PROMPT_HOST_COLOR:-cyan}}%m%f "
-
-	# show username@host if root, with username in white
-	[[ $UID -eq 0 ]] && prompt_pure_username=' %F{white}%n%f%F{242}@%m%f'
 
 	# prompt with vi-keybindings -- https://github.com/sindresorhus/pure/wiki
 	zstyle ':prezto:module:editor:info:keymap:primary'   format "❯%f"
