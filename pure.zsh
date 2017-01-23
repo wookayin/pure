@@ -1,4 +1,7 @@
-# Pure
+# Pure THEME
+# A customized version of @wookayin
+# https://github.com/wookayin/pure
+#
 # by Sindre Sorhus
 # https://github.com/sindresorhus/pure
 # MIT License
