@@ -123,14 +123,14 @@ prompt_pure_preprompt_render() {
 	local preprompt=""
 
 	# username and machine
-	local prompt_pure_username='%F{yellow}%n%f'
+	local prompt_pure_username='%B%F{yellow}%n%f%b'
 	[[ $UID -eq 0 ]] && prompt_pure_username='%F{white}%n%f' # root in white
 	prompt_pure_username+='%F{242}@'          # dark grey
-	prompt_pure_username+="%F{${PROMPT_HOST_COLOR:-cyan}}%m%f "
+	prompt_pure_username+="%B%F{${PROMPT_HOST_COLOR:-cyan}}%m%f%b "
 	preprompt+=$prompt_pure_username
 
 	# path
-	preprompt+="%B%F{red}%~%f%b"
+	preprompt+="%F{red}%~%f"
 	# git info (branch, etc.)
 	preprompt+=" %F{$git_color}${vcs_info_msg_0_}%f"
 	# other information
@@ -434,7 +434,7 @@ prompt_pure_setup() {
 		#'rprompt' '%A%B%S%a%d%m%r%U%u'   # exclude ahead/behind
 
 	# python virtualenv
-	zstyle ':prezto:module:python:info:virtualenv' format ' %F{cyan}%v%f'
+	zstyle ':prezto:module:python:info:virtualenv' format ' %B%F{cyan}%v%f%b'
 
 	# if the user has not registered a custom zle widget for clear-screen,
 	# override the builtin one so that the preprompt is displayed correctly when
@@ -448,7 +448,7 @@ prompt_pure_setup() {
 	zstyle ':prezto:module:editor:info:keymap:alternate' format "❮%f"
 
 	# prompt turns red if the previous command didn't exit with 0
-	PROMPT='%(?.%F{green}.%F{red})${editor_info[keymap]}%f '
+	PROMPT='%B%(?.%F{green}.%F{red})${editor_info[keymap]}%f%b '
 
 	# sprompt
 	SPROMPT='zsh: correct %F{red}%R%f to %F{green}%r%f [nyae]? '
