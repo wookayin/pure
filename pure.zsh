@@ -130,11 +130,11 @@ prompt_pure_preprompt_render() {
 	preprompt+=$prompt_pure_username
 
 	# path
-	preprompt+="%B%F{red}%~%f%b"
+	preprompt+="%B%F{red}%~%f%b "
 	# git info (branch, etc.)
-	preprompt+=" %F{$git_color}${vcs_info_msg_0_}%f"
+	preprompt+="%F{$git_color}${vcs_info_msg_0_}%f "
 	# other information
-	preprompt+="${python_info[virtualenv]}"
+	preprompt+="%F{cyan}${python_info}%f"
 	preprompt+="%F{white}${cuda_info}%f"
 	# execution time
 	preprompt+="%F{yellow}${prompt_pure_cmd_exec_time}%f"
@@ -231,14 +231,14 @@ prompt_pure_precmd() {
 	# get vcs info
 	vcs_info
 
-	# get python info
-	if (( $+functions[python-info] )); then
-		python-info on; python-info
+	# get python info (virtualenv)
+	if [ -n "${VIRTUAL_ENV}" ]; then
+		python_info="${VIRTUAL_ENV:t} "
 	fi
 
 	# nvidia-cuda information
 	if [ ! -z "${CUDA_VISIBLE_DEVICES+1}" ]; then
-		cuda_info=" CUDA:$CUDA_VISIBLE_DEVICES"
+		cuda_info="CUDA:$CUDA_VISIBLE_DEVICES "
 	else
 		unset cuda_info
 	fi
