@@ -130,7 +130,7 @@ prompt_pure_preprompt_render() {
 	preprompt+=$prompt_pure_username
 
 	# path
-	preprompt+="%B%F{red}%~%f%b "
+	preprompt+="%B%F{red}%/%f%b "
 	# git info (branch, etc.)
 	preprompt+="%F{$git_color}${vcs_info_msg_0_}%f "
 	# other information
