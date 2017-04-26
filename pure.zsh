@@ -234,6 +234,8 @@ prompt_pure_precmd() {
 	# get python info (virtualenv)
 	if [ -n "${VIRTUAL_ENV}" ]; then
 		python_info="${VIRTUAL_ENV:t} "
+	else
+		python_info=""
 	fi
 
 	# nvidia-cuda information
