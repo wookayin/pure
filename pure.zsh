@@ -231,9 +231,11 @@ prompt_pure_precmd() {
 	# get vcs info
 	vcs_info
 
-	# get python info (virtualenv)
+	# get python info (virtualenv or anaconda)
 	if [ -n "${VIRTUAL_ENV}" ]; then
 		python_info="${VIRTUAL_ENV:t} "
+	elif [ -n "${CONDA_DEFAULT_ENV}" ]; then
+		python_info="conda:${CONDA_DEFAULT_ENV:t} "
 	else
 		python_info=""
 	fi
