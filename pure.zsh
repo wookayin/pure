@@ -269,8 +269,10 @@ prompt_pure_async_git_status() {
 	builtin cd -q $dir
 
 	# fetch git status information via prezto's git-info module.
-	git-info on
 	git-info
+	if [ $? != 0 ]; then
+		echo "(off)"
+	fi
 	echo ${git_info[rprompt]}
 }
 
