@@ -455,9 +455,10 @@ prompt_pure_setup() {
 	# prompt with vi-keybindings -- https://github.com/sindresorhus/pure/wiki
 	zstyle ':prezto:module:editor:info:keymap:primary' format '%B%F{red}❯%F{yellow}❯%(?.%F{green}.%F{red})❯%f%b'
 	zstyle ':prezto:module:editor:info:keymap:alternate' format '%B%(?.%F{green}.%F{red})❮%F{yellow}❮%F{red}❮%f%b'
+	prompt_fallback="❯"
 
 	# prompt turns red if the previous command didn't exit with 0
-	PROMPT='%B%(?.%F{green}.%F{red})${editor_info[keymap]}%f%b '
+	PROMPT='%B%(?.%F{green}.%F{red})${editor_info[keymap]:-${prompt_fallback}}%f%b '
 
 	# sprompt
 	SPROMPT='zsh: correct %F{red}%R%f to %F{green}%r%f [nyae]? '
