@@ -409,6 +409,9 @@ prompt_pure_setup() {
 	add-zsh-hook precmd prompt_pure_precmd
 	add-zsh-hook preexec prompt_pure_preexec
 
+	# Tell prezto we can manage this prompt (prezto#1723)
+	zstyle ':prezto:module:prompt' managed 'yes'
+
 	# vcs_info: http://zsh.sourceforge.net/Doc/Release/User-Contributions.html
 	# TODO: replace vcs_info with $(zsh_prompt_info)
 	zstyle ':vcs_info:*' enable git
